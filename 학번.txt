@@ -1,3 +1,0 @@
-학번: 2022105494
-api image: https://hub.docker.com/r/jjh9568/prompt_service-api
-worker image: https://hub.docker.com/r/jjh9568/prompt_service-worker
