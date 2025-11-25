@@ -1,0 +1,44 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api:
+    image: jjh9568/prompt_service-api:2.0.0
+    build: ./api
+    depends_on:
+      - redis
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      WORKER_RESULT_TTL: 3600
+    ports:
+      - "8000:8000"
+
+  worker:
+    image: jjh9568/prompt_service-worker:2.0.0
+    build: ./worker
+    depends_on:
+      - redis
+      - ollama
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      WORKER_RESULT_TTL: 3600
+      PROVIDER: ollama
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: llama3
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  ollama:

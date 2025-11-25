@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Service</title>
+    <style>
+        body { font-family: sans-serif; margin: 2em; }
+        textarea { width: 90%; min-height: 100px; display: block; margin-bottom: 1em; }
+        button { padding: 0.5em 1em; margin-right: 0.5em; }
+        #status { font-weight: bold; color: #333; }
+        #job { margin-top: 0.5em; }
+        #out { 
+            background-color: #f4f4f4; 
+            border: 1px solid #ddd; 
+            padding: 1em; 
+            white-space: pre-wrap; 
+            word-wrap: break-word; 
+            min-height: 50px; 
+            margin-top: 1em;
+        }
+        .tag { background-color: #eee; padding: 2px 5px; border-radius: 3px; font-size: 0.9em; }
+        code { background-color: #e0e0e0; padding: 2px 4px; }
+    </style>
+</head>
+<body>
+
+    <h2>LLM 프롬프트 테스트</h2>
+    
+    <label for="prompt">프롬프트 입력:</label>
+    <textarea id="prompt" placeholder="여기에 프롬프트를 입력하세요..."></textarea>
+    
+    <button id="run">▶ 실행</button>
+    <button id="clear">지우기</button>
+
+    <hr style="margin: 1em 0;">
+
+    <div>
+        <strong>상태:</strong> <span id="status">(대기 중)</span>
+    </div>
+    <div id="job"></div>
+
+    <h3>출력:</h3>
+    <pre id="out">(아직 없음)</pre>
+
+    <script>
+      const API_BASE = location.origin;
+      const runBtn = document.getElementById('run');
+      const clearBtn = document.getElementById('clear');
+      const statusEl = document.getElementById('status');
+      const jobEl = document.getElementById('job');
+      const outEl = document.getElementById('out');
+      const promptEl = document.getElementById('prompt');
+    
+      const setStatus = (m) => statusEl.textContent = m;
+      const setOut = (o) => outEl.textContent = typeof o === 'string' ? o : JSON.stringify(o, null, 2);
+    
+      async function poll(jobId) {
+        for (let i=0;i<240;i++){ 
+          const r = await fetch(`${API_BASE}/api/result/${jobId}`);
+          const data = await r.json();
+          if (data.status === 'done') return data.data;
+          setStatus(`대기 중... (${i+1})`);
+          await new Promise(res=>setTimeout(res,500));
+        }
+        throw new Error('타임아웃 (120초 초과)');
+      }
+    
+      runBtn.addEventListener('click', async () => {
+        const prompt = promptEl.value.trim();
+        if (!prompt) { alert('프롬프트를 입력하세요.'); return; }
+        setStatus('요청 전송...'); setOut('(대기)'); jobEl.textContent='';
+    
+        try {
+          const res = await fetch(`${API_BASE}/api/run`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({prompt})
+          });
+          if (!res.ok){
+            let err; try{ err = await res.json(); }catch{ err={detail:res.statusText}; }
+            setStatus(`에러: ${res.status}`); setOut(err); return;
+          }
+          const j = await res.json();
+          if (!j || !j.job_id){ setStatus('에러: job_id 없음'); setOut(j||'(빈 응답)'); return; }
+    
+          const jobId = j.job_id;
+          jobEl.innerHTML = `<span class="tag">job_id</span> <code>${jobId}</code>`;
+          setStatus('처리 중...');
+          const result = await poll(jobId);
+          setOut(result.output);
+          setStatus('완료');
+        } catch (e) {
+          setStatus('오류'); setOut(String(e));
+        }
+      });
+    
+      clearBtn.addEventListener('click', ()=>{
+        promptEl.value=''; setOut('(아직 없음)'); setStatus(''); jobEl.textContent='';
+      });
+    </script>
+</body>
+</html>
