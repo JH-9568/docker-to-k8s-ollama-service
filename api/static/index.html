@@ -3,101 +3,316 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prompt Service</title>
+    <title>K8s LLM Service</title>
     <style>
-        body { font-family: sans-serif; margin: 2em; }
-        textarea { width: 90%; min-height: 100px; display: block; margin-bottom: 1em; }
-        button { padding: 0.5em 1em; margin-right: 0.5em; }
-        #status { font-weight: bold; color: #333; }
-        #job { margin-top: 0.5em; }
-        #out { 
-            background-color: #f4f4f4; 
-            border: 1px solid #ddd; 
-            padding: 1em; 
-            white-space: pre-wrap; 
-            word-wrap: break-word; 
-            min-height: 50px; 
-            margin-top: 1em;
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338ca;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-sub: #6b7280;
+            --border: #e5e7eb;
         }
-        .tag { background-color: #eee; padding: 2px 5px; border-radius: 3px; font-size: 0.9em; }
-        code { background-color: #e0e0e0; padding: 2px 4px; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 800px;
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        h2 {
+            margin-top: 0;
+            color: var(--text-main);
+            font-size: 1.8rem;
+            font-weight: 700;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 1rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-main);
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .btn-group {
+            margin-top: 1rem;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        #run {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        #run:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        #run:active {
+            transform: translateY(0);
+        }
+
+        #clear, #refresh-history {
+            background-color: white;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+        }
+
+        #clear:hover, #refresh-history:hover {
+            background-color: #f9fafb;
+            border-color: #d1d5db;
+        }
+
+        .status-bar {
+            margin-top: 1.5rem;
+            padding: 0.75rem;
+            background-color: #f9fafb;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            color: var(--text-sub);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #status {
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        pre#out {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 12px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin-top: 1rem;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            min-height: 80px;
+            line-height: 1.6;
+        }
+
+        .history-section {
+            margin-top: 3rem;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .history-header h3 {
+            margin: 0;
+            font-size: 1.3rem;
+        }
+
+        #history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .history-item {
+            background: white;
+            border: 1px solid var(--border);
+            padding: 1rem;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            transition: background 0.2s;
+        }
+        
+        .history-item:hover {
+            background-color: #f9fafb;
+        }
+
+        .history-time {
+            font-size: 0.85rem;
+            color: #9ca3af;
+        }
+
+        .history-prompt {
+            font-weight: 500;
+            color: var(--text-main);
+        }
     </style>
 </head>
 <body>
 
-    <h2>LLM 프롬프트 테스트</h2>
+<div class="container">
+    <h2>🚀 AI Prompt Service <span style="font-size:0.6em; color:#9ca3af; font-weight:normal;">(Assignment 3)</span></h2>
     
-    <label for="prompt">프롬프트 입력:</label>
-    <textarea id="prompt" placeholder="여기에 프롬프트를 입력하세요..."></textarea>
-    
-    <button id="run">▶ 실행</button>
-    <button id="clear">지우기</button>
-
-    <hr style="margin: 1em 0;">
-
     <div>
-        <strong>상태:</strong> <span id="status">(대기 중)</span>
+        <label for="prompt">프롬프트 입력</label>
+        <textarea id="prompt" placeholder="AI에게 요청할 내용을 입력하세요... (예: Kubernetes가 뭐야?)"></textarea>
     </div>
-    <div id="job"></div>
 
-    <h3>출력:</h3>
-    <pre id="out">(아직 없음)</pre>
+    <div class="btn-group">
+        <button id="run">▶ 실행 (Run)</button>
+        <button id="clear">지우기</button>
+    </div>
 
-    <script>
-      const API_BASE = location.origin;
-      const runBtn = document.getElementById('run');
-      const clearBtn = document.getElementById('clear');
-      const statusEl = document.getElementById('status');
-      const jobEl = document.getElementById('job');
-      const outEl = document.getElementById('out');
-      const promptEl = document.getElementById('prompt');
-    
-      const setStatus = (m) => statusEl.textContent = m;
-      const setOut = (o) => outEl.textContent = typeof o === 'string' ? o : JSON.stringify(o, null, 2);
-    
-      async function poll(jobId) {
-        for (let i=0;i<240;i++){ 
-          const r = await fetch(`${API_BASE}/api/result/${jobId}`);
-          const data = await r.json();
-          if (data.status === 'done') return data.data;
-          setStatus(`대기 중... (${i+1})`);
-          await new Promise(res=>setTimeout(res,500));
+    <div class="status-bar">
+        <span>Running Status:</span>
+        <span id="status">Ready</span>
+    </div>
+
+    <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">결과 출력</h3>
+    <pre id="out">결과가 이곳에 표시됩니다...</pre>
+
+    <div class="history-section">
+        <div class="history-header">
+            <h3>📜 최근 요청 목록 (History)</h3>
+            <button id="refresh-history" onclick="loadHistory()">🔄 새로고침</button>
+        </div>
+        <div id="history-list">
+            </div>
+    </div>
+</div>
+
+<script>
+    const API_BASE = location.origin;
+    const statusEl = document.getElementById('status');
+    const outEl = document.getElementById('out');
+    const historyList = document.getElementById('history-list');
+
+    const updateStatus = (text, isError = false) => {
+        statusEl.textContent = text;
+        statusEl.style.color = isError ? '#ef4444' : '#4F46E5';
+    };
+
+    async function poll(jobId) {
+        for (let i = 0; i < 240; i++) { 
+            const r = await fetch(`${API_BASE}/api/result/${jobId}`);
+            const data = await r.json();
+            if (data.status === 'done') return data.data;
+            
+            updateStatus(`Processing... (${i+1}s)`);
+            await new Promise(r => setTimeout(r, 1000));
         }
-        throw new Error('타임아웃 (120초 초과)');
-      }
-    
-      runBtn.addEventListener('click', async () => {
-        const prompt = promptEl.value.trim();
-        if (!prompt) { alert('프롬프트를 입력하세요.'); return; }
-        setStatus('요청 전송...'); setOut('(대기)'); jobEl.textContent='';
-    
+        throw new Error('Timeout: 서버 응답이 너무 늦습니다.');
+    }
+
+    document.getElementById('run').addEventListener('click', async () => {
+        const prompt = document.getElementById('prompt').value.trim();
+        if (!prompt) return alert('내용을 입력해주세요!');
+        
+        updateStatus('Requesting...'); 
+        outEl.textContent = 'AI가 생각하고 있습니다...';
+        outEl.style.color = '#94a3b8';
+
         try {
-          const res = await fetch(`${API_BASE}/api/run`, {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({prompt})
-          });
-          if (!res.ok){
-            let err; try{ err = await res.json(); }catch{ err={detail:res.statusText}; }
-            setStatus(`에러: ${res.status}`); setOut(err); return;
-          }
-          const j = await res.json();
-          if (!j || !j.job_id){ setStatus('에러: job_id 없음'); setOut(j||'(빈 응답)'); return; }
-    
-          const jobId = j.job_id;
-          jobEl.innerHTML = `<span class="tag">job_id</span> <code>${jobId}</code>`;
-          setStatus('처리 중...');
-          const result = await poll(jobId);
-          setOut(result.output);
-          setStatus('완료');
+            const res = await fetch(`${API_BASE}/api/run`, {
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ prompt })
+            });
+            
+            if (!res.ok) throw new Error('서버 연결 실패');
+
+            const j = await res.json();
+            
+            loadHistory(); 
+
+            const result = await poll(j.job_id);
+            outEl.style.color = '#e2e8f0';
+            outEl.textContent = result.output || JSON.stringify(result, null, 2);
+            updateStatus('Completed ✅');
         } catch (e) {
-          setStatus('오류'); setOut(String(e));
+            updateStatus('Error ❌', true);
+            outEl.textContent = `에러 발생: ${String(e)}`;
+            outEl.style.color = '#fca5a5';
         }
-      });
+    });
+
+    async function loadHistory() {
+        try {
+            const res = await fetch(`${API_BASE}/api/history`);
+            const data = await res.json();
+            
+            if(data.length === 0) {
+                historyList.innerHTML = '<div style="text-align:center; color:#9ca3af; padding:1rem;">아직 기록이 없습니다.</div>';
+                return;
+            }
+
+            historyList.innerHTML = data.map(item => `
+                <div class="history-item">
+                    <div class="history-time">${new Date(item.ts * 1000).toLocaleString()}</div>
+                    <div class="history-prompt">${item.prompt}</div>
+                    <div style="color:#4b5563; font-size:0.95rem; margin-top:4px;">
+                        ${item.result ? `<strong>응답:</strong> ${String(item.result).substring(0, 140)}${String(item.result).length>140?'...':''}` : '<em>결과 준비 중...</em>'}
+                    </div>
+                </div>
+            `).join('');
+        } catch (e) { 
+            console.error(e);
+            historyList.innerHTML = '<div style="color:red">기록을 불러오지 못했습니다.</div>';
+        }
+    }
     
-      clearBtn.addEventListener('click', ()=>{
-        promptEl.value=''; setOut('(아직 없음)'); setStatus(''); jobEl.textContent='';
-      });
-    </script>
+    document.getElementById('clear').onclick = () => { 
+        document.getElementById('prompt').value = ''; 
+        document.getElementById('prompt').focus();
+    };
+
+    loadHistory();
+</script>
+
 </body>
 </html>
